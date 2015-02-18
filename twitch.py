@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 bot_owner = 'Eleng555'
 nick = 'KLBOT'
-chan = 'kylelandrypiano'
+chan = 'eleng555'
 channel = '#' + chan
 server = 'irc.twitch.tv'
 password = REDACTED
@@ -46,7 +46,7 @@ def upstream():
         if upmin < 0:
             upmin = 60 + upmin
             uphr = uphr - 1
-        ret2 = "Current Upstream Time On " + channel + " is: " + str(uphr) + " hour(s), " + str(upmin) + " min(s)."
+        ret2 = "Current Upstream Time on " + channel + " is: " + str(uphr) + " hour(s), " + str(upmin) + " min(s)."
         return ret1, ret2
     except Exception:
         return "Stream Is Currently Offline."
@@ -55,6 +55,9 @@ slots = 6 # for roulette
 
 queue = 0
 currentsong = ""
+votecount = list()
+options = list()
+userlist = list()
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((server, port))
@@ -66,15 +69,16 @@ s.send('NICK ' + nick + '\r\n')
 print "Joining channel..."
 s.send('JOIN ' + channel + '\r\n')
 print "Joined!"
-##s.send('PRIVMSG ' + channel + ' :Hello!\r\n')
+s.send('PRIVMSG ' + channel + ' :Hello!\r\n')
 
 def ping(data):
     print data
     if data.find('PING') != -1:
         s.send(data.replace('PING', 'PONG'))
         
-##commands = ["help", "roll", "roulette", "leave", "upstream", "setcurrentsong"]
-commands = ["help", "leave", "upstream", "setcurrentsong"]
+commands = ["help", "roll", "roulette", "leave", "upstream", "setcurrentsong", "poll", "pollreset",
+            "vote"]
+##commands = ["help", "leave", "upstream", "setcurrentsong", "poll", "pollreset", "vote"]
 
 
 def msg(m):
@@ -95,6 +99,9 @@ queuetimer()
 
 def parse(line):
     message, username = "", ""
+    exclude = set(string.punctuation)
+    strippedline = line
+    strippedline = ''.join(ch for ch in strippedline if ch not in exclude)
     if line.find("JOIN %s" % (channel)) != -1:
         username = line.split(":")[1].split("!")[0]
         ##if username.lower() != "klbot":
@@ -102,51 +109,51 @@ def parse(line):
     if len(line.split(":")) == 3:
         username = line.split(":")[1].split("!")[0]
         message = line.split(":")[2]
-##        if line.lower().find("lol") != -1:
-##            r = random.randint(1,500)
-##            print r
-##            if r < 5:
-##                msg("PRIVMSG %s :%s, but did you actually laugh out loud?\n" % (channel, username))
-##        elif line.lower().find("mic?") != -1:
-##                msg("PRIVMSG %s :Kyle's microphone is currently being used by the keyboard (it is a direct line-in connection),"  % (channel) + 
-##                       " so Kyle cannot talk during piano streams. However, he does occasionally do Q&A sessions after streams.\n")
-##        elif line.lower().find("has just subscribed") != -1:
-##                msg("PRIVMSG %s : %s, welcome to Kyle's channel! We hope you enjoy all the piano madness!~ \n" % (channel, username))
-##        if line.lower().find("du?") != -1 or line.lower().find("dudu") != -1:
-##                msg("PRIVMSG %s :DUDUDUDUDU!\n" % (channel))
-##        elif line.lower().strip(",").find("hello klbot") != -1 or line.lower().strip(",").find("hi klbot") != -1 or line.lower().strip(",").find("hey klbot") != -1:
-##                msg("PRIVMSG %s :Hey %s!\n" % (channel, username))
+        if line.lower().find("lol") != -1:
+            r = random.randint(1,500)
+            print r
+            if r < 5:
+                msg("PRIVMSG %s :%s, but did you actually laugh out loud?\n" % (channel, username))
+        elif line.lower().find("mic?") != -1:
+                msg("PRIVMSG %s :Kyle's microphone is currently being used by the keyboard (it is a direct line-in connection),"  % (channel) + 
+                       " so Kyle cannot talk during piano streams. However, he does occasionally do Q&A sessions after streams.\n")
+        elif line.lower().find("has just subscribed") != -1:
+                msg("PRIVMSG %s : %s, welcome to Kyle's channel! We hope you enjoy all the piano madness!~ \n" % (channel, username))
+        elif line.lower().find("du?") != -1 or line.lower().find("dudu") != -1:
+                msg("PRIVMSG %s :DUDUDUDUDU!\n" % (channel))
+        elif strippedline.lower().find("hello klbot") != -1 or strippedline.lower().strip(",").find("hi klbot") != -1 or strippedline.lower().strip(",").find("hey klbot") != -1:
+                msg("PRIVMSG %s :Hey %s!\n" % (channel, username))
         if message.find("`") != -1:
             actual = message[1:].split(" ")
             try: 
-                text = message[message.find(" "):]
+                text = message[message.find(" ")+1:]
             except Exception:
                 print "Cannot split"
             command = actual[0]
-##            if command.find("roll") != -1:
-##                highest = 1000
-##                try:
-##                    if len(actual) == 2:
-##                        highest = int(actual[1])
-##                        if highest < 1:
-##                            raise Exception()
-##                    msg("PRIVMSG %s :%s rolled %d\n" % (channel, username, random.randint(1, highest)))
-##                except Exception:
-##                    a = 0
-##                    msg("PRIVMSG %s :Enter a valid number, %s. :C \n" % (channel, username))
-##            elif command.find("help") != -1:
-##                msg("PRIVMSG %s :My commands are: %s. To use a command, type ` (backwards quote) followed by the command. For example, `roll 1000. \n" % (channel, ", ".join(sorted(commands))))
-##            elif command.find("roulette") != -1:
-##                global slots
-##                rang = random.random()
-##                if rang < (1.0 / slots):
-##                    slots = 6
-##                    msg("PRIVMSG %s :%s, you died! D:\n" % (channel, username))
-##                    msg("PRIVMSG %s :*reloads the chambers*, there are %s untouched slots. You have a %s%% chance to die\n" % (channel, slots, "{0:.2f}".format(100.0 / slots)))
-##                else:
-##                    slots -= 1
-##                    msg("PRIVMSG %s :*click*, there are %s untouched slots. You have a %s%% chance to die.\n" % (channel, slots, "{0:.2f}".format(100.0 / slots)))
-            if command.find("leave") != -1 and username == bot_owner:
+            if command.find("roll") != -1:
+                highest = 1000
+                try:
+                    if len(actual) == 2:
+                        highest = int(actual[1])
+                        if highest < 1:
+                            raise Exception()
+                    msg("PRIVMSG %s :%s rolled %d\n" % (channel, username, random.randint(1, highest)))
+                except Exception:
+                    a = 0
+                    msg("PRIVMSG %s :Enter a valid number, %s. :C \n" % (channel, username))
+            if command.find("help") != -1:
+                msg("PRIVMSG %s :My commands are: %s. To use a command, type ` (backwards quote) followed by the command. For example, `roll 1000. \n" % (channel, ", ".join(sorted(commands))))
+            elif command.find("roulette") != -1:
+                global slots
+                rang = random.random()
+                if rang < (1.0 / slots):
+                    slots = 6
+                    msg("PRIVMSG %s :%s, you died! D:\n" % (channel, username))
+                    msg("PRIVMSG %s :*reloads the chambers*, there are %s untouched slots. You have a %s%% chance to die\n" % (channel, slots, "{0:.2f}".format(100.0 / slots)))
+                else:
+                    slots -= 1
+                    msg("PRIVMSG %s :*click*, there are %s untouched slots. You have a %s%% chance to die.\n" % (channel, slots, "{0:.2f}".format(100.0 / slots)))
+            elif command.find("leave") != -1 and username == bot_owner:
                 msg("PRIVMSG %s :Fine, I'll leave... \n" % (channel))
                 msg("PART " + channel + "\r\n")
                 sys.exit()
@@ -156,13 +163,32 @@ def parse(line):
                     msg("PRIVMSG %s :" % (channel) + str(upstream()[0]) + str(upstream()[1]) + "\n")
                 else:
                     msg("PRIVMSG %s :" % (channel) + str(upstream()) + "\n")
+            elif command.find("poll") != -1 and command.find("pollreset") == -1:
+                global votecount, options
+                options = text.strip().split(",")
+                for x in range (0,len(options)):
+                    votecount.append(0)
+                print options, votecount
+            elif command.find("pollreset") != -1:
+                global userlist
+                votecount = list()
+                options = list()
+                userlist = list()
+                print votecount, options, userlist
+            elif command.find("vote") != -1:
+                for x in range (0,len(options)):
+                    if username not in userlist:
+                        if text.find(options[x]) != -1:
+                            votecount[x] = votecount[x] + 1
+                            userlist.append(username)
+                print userlist, votecount
             elif command.find("setcurrentsong") != -1:
                 global currentsong
                 currentsong = text
-                ##print currentsong
+                print currentsong   
                 msg("PRIVMSG %s :Current Song is: %s.\n" % (channel, currentsong))
-        if line.lower().find("song?") != -1 and currentsong != "":
-            msg("PRIVMSG %s :Current Song is: '%s', @%s.\n" % (channel, currentsong, username))
+        if (line.lower().find("current song?") != -1 or line.lower().find("song name?") != -1) and currentsong != "":
+            msg("PRIVMSG %s :Current Song is: %s, @%s.\n" % (channel, currentsong, username))
 
 while True:
     line = s.recv(1024)
