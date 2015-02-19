@@ -17,6 +17,7 @@ server = 'irc.twitch.tv'
 password = REDACTED
 port = 6667
 
+
 url = 'https://api.twitch.tv/kraken/streams/' + chan
 contents = urllib2.urlopen(url)
 
@@ -40,7 +41,7 @@ def upstream():
             dnowint = dnowint + 24
         now = datetime.strptime(str(dnowint) + ":" + dnow.split(":")[1],"%H:%M").strftime("%I:%M%p")
         ##print start + " EST ", now + " EST"
-        ret1 = "Stream Started At " + start + " EST. "
+        ret1 = "Stream Started at " + start + " EST. "
         uphr = dnowint - hr
         upmin = int(dnow.split(":")[1].split(":")[0]) - int(time.split(":")[1].split(":")[0])
         if upmin < 0:
@@ -49,7 +50,7 @@ def upstream():
         ret2 = "Current Upstream Time on " + channel + " is: " + str(uphr) + " hour(s), " + str(upmin) + " min(s)."
         return ret1, ret2
     except Exception:
-        return "Stream Is Currently Offline."
+        return "Stream on " + channel + " is currently offline."
    
 slots = 6 # for roulette
 
@@ -58,6 +59,7 @@ currentsong = ""
 votecount = list()
 options = list()
 userlist = list()
+results = list()
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((server, port))
@@ -76,7 +78,7 @@ def ping(data):
     if data.find('PING') != -1:
         s.send(data.replace('PING', 'PONG'))
         
-commands = ["help", "roll", "roulette", "leave", "upstream", "setcurrentsong", "poll", "pollreset",
+commands = ["help", "roll", "roulette", "leave", "upstream", "setcurrentsong", "poll", "pollreset", "pollresult",
             "vote"]
 ##commands = ["help", "leave", "upstream", "setcurrentsong", "poll", "pollreset", "vote"]
 
@@ -163,25 +165,31 @@ def parse(line):
                     msg("PRIVMSG %s :" % (channel) + str(upstream()[0]) + str(upstream()[1]) + "\n")
                 else:
                     msg("PRIVMSG %s :" % (channel) + str(upstream()) + "\n")
-            elif command.find("poll") != -1 and command.find("pollreset") == -1:
+            elif command.find("poll") != -1 and command.find("pollreset") == -1 and command.find("pollresult") == -1 and command.find("vote") == -1:
                 global votecount, options
                 options = text.strip().split(",")
                 for x in range (0,len(options)):
                     votecount.append(0)
                 print options, votecount
+                msg("PRIVMSG %s :Poll has been created with the following options: %s\n" % (channel, options))
             elif command.find("pollreset") != -1:
-                global userlist
+                global userlist, results
                 votecount = list()
                 options = list()
                 userlist = list()
-                print votecount, options, userlist
-            elif command.find("vote") != -1:
+                results = list()
+                print votecount, options, userlist, results
+            elif command.find("pollresult") != -1:
+                for x in range (0,len(options)):
+                    results.append(str(options[x]) + ": " + str(votecount[x]))
+                msg("PRIVMSG %s :Poll Results: %s\n" % (channel, results))
+            elif command.find("vote") != -1 and command.find("poll") == -1:
                 for x in range (0,len(options)):
                     if username not in userlist:
-                        if text.find(options[x]) != -1:
+                        if text.lower().strip().find(options[x].lower().strip()) != -1:
                             votecount[x] = votecount[x] + 1
                             userlist.append(username)
-                print userlist, votecount
+                print userlist, options, votecount
             elif command.find("setcurrentsong") != -1:
                 global currentsong
                 currentsong = text
