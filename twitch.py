@@ -18,16 +18,15 @@ password = REDACTED
 port = 6667
 
 
-url = 'https://api.twitch.tv/kraken/streams/' + chan
-contents = urllib2.urlopen(url)
-
-j = json.loads(contents.read())
-json_string = json.dumps(j,sort_keys=True,indent=2)
-print json_string
-parent =  j["stream"]
-
-def upstream():
+def upstream(c):
     try:
+        url = 'https://api.twitch.tv/kraken/streams/' + c
+        contents = urllib2.urlopen(url)
+
+        j = json.loads(contents.read())
+        json_string = json.dumps(j,sort_keys=True,indent=2)
+        print json_string
+        parent =  j["stream"]
         time = parent["created_at"].split("T")[1].split("Z")[0]
         hr = int(time.split(":")[0])
         timezone = -5
@@ -47,10 +46,10 @@ def upstream():
         if upmin < 0:
             upmin = 60 + upmin
             uphr = uphr - 1
-        ret2 = "Current Upstream Time on " + channel + " is: " + str(uphr) + " hour(s), " + str(upmin) + " min(s)."
+        ret2 = "Current Upstream Time on #" + c + " is: " + str(uphr) + " hour(s), " + str(upmin) + " min(s)."
         return ret1, ret2
     except Exception:
-        return "Stream on " + channel + " is currently offline."
+        return "Stream on #" + c + " is currently offline."
    
 slots = 6 # for roulette
 
@@ -79,7 +78,7 @@ def ping(data):
         s.send(data.replace('PING', 'PONG'))
         
 commands = ["help", "roll", "roulette", "leave", "upstream", "setcurrentsong", "poll", "pollreset", "pollresult",
-            "vote"]
+            "vote", "checkstream"]
 ##commands = ["help", "leave", "upstream", "setcurrentsong", "poll", "pollreset", "vote"]
 
 
@@ -155,16 +154,22 @@ def parse(line):
                 else:
                     slots -= 1
                     msg("PRIVMSG %s :*click*, there are %s untouched slots. You have a %s%% chance to die.\n" % (channel, slots, "{0:.2f}".format(100.0 / slots)))
-            elif command.find("leave") != -1 and username == bot_owner:
+            elif command.find("leave") != -1 and username.lower() == bot_owner.lower():
                 msg("PRIVMSG %s :Fine, I'll leave... \n" % (channel))
                 msg("PART " + channel + "\r\n")
                 sys.exit()
             elif command.find("upstream") != -1:
                 ##print upstream(), len(upstream())
-                if len(upstream()) == 2:
-                    msg("PRIVMSG %s :" % (channel) + str(upstream()[0]) + str(upstream()[1]) + "\n")
+                if len(upstream(chan)) == 2:
+                    msg("PRIVMSG %s :" % (channel) + str(upstream(chan)[0]) + str(upstream(chan)[1]) + "\n")
                 else:
-                    msg("PRIVMSG %s :" % (channel) + str(upstream()) + "\n")
+                    msg("PRIVMSG %s :" % (channel) + str(upstream(chan)) + "\n")
+            elif command.find("checkstream") != -1:
+                checkchan = text.strip()
+                if len(upstream(checkchan)) == 2:
+                    msg("PRIVMSG %s :" % (channel) + str(upstream(checkchan)[0]) + str(upstream(checkchan)[1]) + "\n")
+                else:
+                    msg("PRIVMSG %s :" % (channel) + str(upstream(checkchan)) + "\n")
             elif command.find("poll") != -1 and command.find("pollreset") == -1 and command.find("pollresult") == -1 and command.find("vote") == -1:
                 global votecount, options
                 options = text.strip().split(",")
